@@ -15,11 +15,11 @@ public class SpecificLocation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private int latitude;
+    private float latitude;
 
-    private int longitude;
+    private float longitude;
 
-    @OneToMany
+    @OneToOne
     @JoinColumn(name = "location_id")
     private Location location;
 

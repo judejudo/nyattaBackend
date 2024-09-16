@@ -1,14 +1,14 @@
 package com.example.nyatta.service.impl;
 import com.example.nyatta.entity.*;
 import com.example.nyatta.exception.ResourceNotFoundException;
-import com.example.nyatta.model.*;
+import com.example.nyatta.dto.*;
 import com.example.nyatta.repository.*;
 import com.example.nyatta.service.PropertyService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,7 +25,7 @@ public class PropertyServiceImpl implements PropertyService {
     private ImageRepository ImageRepository;
 
     @Autowired
-    private LocationRepository LocationRepository;
+    private SpecificLocationRepository specificLocationRepository;
 
     @Autowired
     private PropertyTypeRepository PropertyTypeRepository;
@@ -53,21 +53,44 @@ public class PropertyServiceImpl implements PropertyService {
         propertyDTO.setIsGuestFavourite(property.getIsGuestFavourite());
 
         // Convert related entities to DTOs
-        propertyDTO.setLocation(convertToLocationDTO(property.getLocation()));
-        propertyDTO.setPropertyType(convertToPropertyDTO(property.getPropertyType()));
-        propertyDTO.setPlaceType(convertToPlaceTypeDTO(property.getPlaceType()));
+        propertyDTO.setSpecificlocationDTO(convertToLocationDTO(property.getSpecificLocation()));
+        propertyDTO.setPropertyTypeDTO(convertToPropertyDTO(property.getPropertyType()));
+        propertyDTO.setPlaceTypeDTO(convertToPlaceTypeDTO(property.getPlaceType()));
 
-
-        // Add other fields as needed
+        // Convert the list of Images to ImagesDTO
+        propertyDTO.setImagesDTO(convertToImagesDTO(property.getImages()));
 
         return propertyDTO;
     }
 
-    private LocationDTO convertToLocationDTO(Location location) {
-        LocationDTO locationDTO = new LocationDTO();
-        locationDTO.setId(location.getId());
-        locationDTO.setLocationName(location.getLocationName());
-        return locationDTO;
+    // Corrected method to convert a list of Images to List<ImagesDTO>
+    private List<ImagesDTO> convertToImagesDTO(List<Images> imagesList) {
+        List<ImagesDTO> imagesDTOList = new ArrayList<>();
+
+        for (Images images : imagesList) {
+            ImagesDTO imagesDTO = new ImagesDTO();
+            imagesDTO.setId(images.getId());
+            imagesDTO.setImageURL(images.getImageURL());
+            imagesDTO.setImageOrder(images.getImageOrder());
+
+//            PropertyDTO propertyDTO = new PropertyDTO();
+//            propertyDTO.setId(images.getProperty().getId());
+//            imagesDTO.setPropertyDTO(propertyDTO);
+
+            imagesDTOList.add(imagesDTO);
+        }
+
+        return imagesDTOList;
+    }
+
+
+    private SpecificLocationDTO convertToLocationDTO(SpecificLocation specificLocation) {
+        SpecificLocationDTO specificLocationDTO = new SpecificLocationDTO();
+        specificLocationDTO.setId(specificLocation.getId());
+        specificLocationDTO.setLongitude(specificLocation.getLongitude());
+        specificLocationDTO.setLatitude(specificLocation.getLatitude());
+
+        return specificLocationDTO;
     }
 
     private PropertyTypeDTO convertToPropertyDTO(PropertyType propertyType) {
@@ -85,24 +108,56 @@ public class PropertyServiceImpl implements PropertyService {
     }
     @Override
     public PropertyDTO getPropertyById(Long id) {
-        Property property = PropertyRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + id));
+        Property property = PropertyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + id));
+
         List<Images> images = ImageRepository.findByPropertyId(id);
 
-        List<ImagesDTO> imagesDTO = images.stream().map(image -> new ImagesDTO(image.getImageURL(), image.getImageOrder())).collect(Collectors.toList());
+        List<ImagesDTO> imagesDTO = images.stream().map(image -> {
+            ImagesDTO imagesDTO1 = new ImagesDTO();
+            imagesDTO1.setId(image.getId());
+            imagesDTO1.setImageURL(image.getImageURL());
+            imagesDTO1.setImageOrder(image.getImageOrder());
+
+            // Assuming you want to set only the Property ID in ImagesDTO
+            PropertyDTO propertyDTOForImage = new PropertyDTO();
+            propertyDTOForImage.setId(property.getId());
+            imagesDTO1.setPropertyDTO(propertyDTOForImage);
+
+            return imagesDTO1;
+        }).collect(Collectors.toList());
 
         PropertyDTO propertyDTO = new PropertyDTO();
         propertyDTO.setId(property.getId());
         propertyDTO.setPropertyName(property.getPropertyName());
         propertyDTO.setNightlyPrice(property.getNightlyPrice());
-        propertyDTO.setAddressLine1(propertyDTO.getAddressLine1());
-        propertyDTO.setAddressLine2(propertyDTO.getAddressLine2());
+        propertyDTO.setAddressLine1(property.getAddressLine1());
+        propertyDTO.setAddressLine2(property.getAddressLine2());
         propertyDTO.setNumBeds(property.getNumBeds());
         propertyDTO.setNumBathrooms(property.getNumBathrooms());
+        propertyDTO.setNumBedrooms(property.getNumBedrooms());
+        propertyDTO.setNumGuests(property.getNumGuests());
         propertyDTO.setDescription(property.getDescription());
-        propertyDTO.setImages(imagesDTO);  // Include the images
+        propertyDTO.setIsGuestFavourite(property.getIsGuestFavourite());
+        propertyDTO.setImagesDTO(imagesDTO);  // Include the images
+
+        // Handle other nested DTOs if necessary (PlaceTypeDTO, PropertyTypeDTO, SpecificLocationDTO, etc.)
+        // Example:
+        PlaceTypeDTO placeTypeDTO = new PlaceTypeDTO();
+        placeTypeDTO.setId(property.getPlaceType().getId());
+        placeTypeDTO.setTypeName(property.getPlaceType().getTypeName());
+        propertyDTO.setPlaceTypeDTO(placeTypeDTO);
+
+        PropertyTypeDTO propertyTypeDTO = new PropertyTypeDTO();
+        propertyTypeDTO.setId(property.getPropertyType().getId());
+        propertyTypeDTO.setTypeName(property.getPropertyType().getTypeName());
+        propertyDTO.setPropertyTypeDTO(propertyTypeDTO);
+
+        // Continue with other DTO mappings as needed...
 
         return propertyDTO;
     }
+
 
     @Override
     public PropertyDTO createProperty(PropertyDTO propertyDTO) {
@@ -111,21 +166,21 @@ public class PropertyServiceImpl implements PropertyService {
         BeanUtils.copyProperties(propertyDTO, property);
 
         // Handle nested DTOs manually
-        if (propertyDTO.getLocation() != null) {
-            Location location = new Location();
-            BeanUtils.copyProperties(propertyDTO.getLocation(), location);
-            property.setLocation(location);
+        if (propertyDTO.getSpecificlocationDTO() != null) {
+            SpecificLocation specificLocation = new SpecificLocation();
+            BeanUtils.copyProperties(propertyDTO.getSpecificlocationDTO(), specificLocation);
+            property.setSpecificLocation(specificLocation);
         }
 
-        if (propertyDTO.getPlaceType() != null) {
+        if (propertyDTO.getPlaceTypeDTO() != null) {
             PlaceType placeType = new PlaceType();
-            BeanUtils.copyProperties(propertyDTO.getPlaceType(), placeType);
+            BeanUtils.copyProperties(propertyDTO.getPlaceTypeDTO(), placeType);
             property.setPlaceType(placeType);
         }
 
-        if (propertyDTO.getPropertyType() != null) {
+        if (propertyDTO.getPropertyTypeDTO() != null) {
             PropertyType propertyType = new PropertyType();
-            BeanUtils.copyProperties(propertyDTO.getPropertyType(), propertyType);
+            BeanUtils.copyProperties(propertyDTO.getPropertyTypeDTO(), propertyType);
             property.setPropertyType(propertyType);
         }
 
@@ -137,22 +192,22 @@ public class PropertyServiceImpl implements PropertyService {
         BeanUtils.copyProperties(savedProperty, savedPropertyDTO);
 
         // Handle nested entities manually
-        if (savedProperty.getLocation() != null) {
+        if (savedProperty.getSpecificLocation() != null) {
             LocationDTO locationDTO = new LocationDTO();
-            BeanUtils.copyProperties(savedProperty.getLocation(), locationDTO);
-            savedPropertyDTO.setLocation(locationDTO);
+            BeanUtils.copyProperties(savedProperty.getSpecificLocation(), locationDTO);
+            savedPropertyDTO.setSpecificlocationDTO(new SpecificLocationDTO());
         }
 
         if (savedProperty.getPlaceType() != null) {
             PlaceTypeDTO placeTypeDTO = new PlaceTypeDTO();
             BeanUtils.copyProperties(savedProperty.getPlaceType(), placeTypeDTO);
-            savedPropertyDTO.setPlaceType(placeTypeDTO);
+            savedPropertyDTO.setPlaceTypeDTO(placeTypeDTO);
         }
 
         if (savedProperty.getPropertyType() != null) {
             PropertyTypeDTO propertyTypeDTO = new PropertyTypeDTO();
             BeanUtils.copyProperties(savedProperty.getPropertyType(), propertyTypeDTO);
-            savedPropertyDTO.setPropertyType(propertyTypeDTO);
+            savedPropertyDTO.setPropertyTypeDTO(propertyTypeDTO);
         }
 
         return savedPropertyDTO;
@@ -177,19 +232,19 @@ public class PropertyServiceImpl implements PropertyService {
             // Handle related entities
 
             // Update PlaceType
-            PlaceType placeType = PlaceTypeRepository.findById(propertyDTO.getPlaceType().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("PlaceType not found with id: " + propertyDTO.getPlaceType().getId()));
+            PlaceType placeType = PlaceTypeRepository.findById(propertyDTO.getPlaceTypeDTO().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("PlaceType not found with id: " + propertyDTO.getPlaceTypeDTO().getId()));
             property.setPlaceType(placeType);
 
             // Update PropertyType
-            PropertyType propertyType = PropertyTypeRepository.findById(propertyDTO.getPropertyType().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("PropertyType not found with id: " + propertyDTO.getPropertyType().getId()));
+            PropertyType propertyType = PropertyTypeRepository.findById(propertyDTO.getPropertyTypeDTO().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("PropertyType not found with id: " + propertyDTO.getPropertyTypeDTO().getId()));
             property.setPropertyType(propertyType);
 
             // Update Location
-            Location location = LocationRepository.findById(propertyDTO.getLocation().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Location not found with id: " + propertyDTO.getLocation().getId()));
-            property.setLocation(location);
+            SpecificLocation  specificLocation = specificLocationRepository.findById(propertyDTO.getSpecificlocationDTO().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Location not found with id: " + propertyDTO.getSpecificlocationDTO().getId()));
+            property.setSpecificLocation(specificLocation);
 
             // Save the updated property
             Property updatedProperty = PropertyRepository.save(property);

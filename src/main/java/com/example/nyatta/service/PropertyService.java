@@ -1,7 +1,6 @@
 package com.example.nyatta.service;
 
-import com.example.nyatta.entity.Property;
-import com.example.nyatta.model.PropertyDTO;
+import com.example.nyatta.dto.PropertyDTO;
 
 import java.util.List;
 import java.util.Optional;

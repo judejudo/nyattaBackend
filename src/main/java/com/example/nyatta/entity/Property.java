@@ -1,25 +1,19 @@
 package com.example.nyatta.entity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Entity
-@Setter
-@Getter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Property {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne
-    @JoinColumn(name = "location_id")
-    private Location location;
 
     @ManyToOne
     @JoinColumn(name = "place_type_id")
@@ -29,12 +23,15 @@ public class Property {
     @JoinColumn(name = "property_type_id")
     private PropertyType propertyType;
 
+    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Images> images = new ArrayList<>();
+
     @ManyToOne
     @JoinColumn(name = "host_id")
     private UserAccount host;
 
-    @OneToOne
-    @JoinColumn(name = "specific_location")
+    @ManyToOne
+    @JoinColumn(name = "specific_location_id")
     private SpecificLocation specificLocation;
 
     private Double nightlyPrice;
