@@ -17,6 +17,8 @@ public class UserAccountDTO {
     private String lastName;
     private String emailAddress;
     private String password;
+    private String confirmPassword;
+    private String firebaseUid;
     private Date joinedDate;
     private Date dateHostStarted;
 }
